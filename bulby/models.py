@@ -13,7 +13,7 @@ class LightState(object):
 class Light(object):
     def __init__(self, light_id, model, name, state, software_version, light_type,
                  mac_address):
-        self.light_id = light_id
+        self.light_id = int(light_id)
         self.model = model
         self.name = name
         self.state = LightState(state)

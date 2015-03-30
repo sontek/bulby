@@ -1,6 +1,7 @@
 from bulby.ssdp import discover
 from bulby.models import Light
-
+from bulby.color import get_xy_from_hex
+from collections.abc import Mapping
 from urllib.parse import urlparse
 import requests
 import json
@@ -8,7 +9,7 @@ import json
 
 class HueBridgeClient(object):
     def __init__(self, ip_address=None, port=80, scheme='http',
-                 device_type='bulby', username='bulby'):
+                 device_type='bulby', username='bulbyapp'):
         '''
         Connects to a Hue Bridge, if an ip address isn't defined it
         will use ssdp to discover the bridge on the network. If there
@@ -39,6 +40,8 @@ class HueBridgeClient(object):
 
         self.device_type = device_type
         self.username = username
+        self._lights = None
+        self.connect()
 
     def make_request(self, method, url, body=None):
         url = '%s%s' % (self.base_url, url)
@@ -49,7 +52,11 @@ class HueBridgeClient(object):
         else:
             response = fn(url)
 
-        return response.json()
+        data = response.json()
+        # Errors are returned as lists instead of dictionaries
+        if not isinstance(data, Mapping):
+            return data[0]
+        return data
 
     def validate_registration(self):
         '''
@@ -59,17 +66,17 @@ class HueBridgeClient(object):
         url = '/api/%s' % self.username
         response = self.make_request('GET', url)
 
-        if 'error' not in response:
-            return True
+        if 'error' in response:
+            return False
 
-        return False
+        return True
 
     def connect(self):
         '''
         Registers a new device + username with the bridge
         '''
         # Don't try to register if we already have
-        if self.validate_registration:
+        if self.validate_registration():
             return True
 
         body = {
@@ -93,6 +100,15 @@ class HueBridgeClient(object):
         url = '/api/%s/lights' % self.username
         response = self.make_request('GET', url)
         lights = []
+        # Did we get a success response back?
+        # error responses look like:
+        # [{'error': {'address': '/lights',
+        #    'description': 'unauthorized user',
+        #    'type': 1}}]
+
+        if 'error' in response:
+            raise Exception(response['error']['description'])
+
         for id_, data in response.items():
             lights.append(Light(
                 id_,
@@ -104,7 +120,26 @@ class HueBridgeClient(object):
                 data['uniqueid']
             ))
 
-        return sorted(lights, key=lambda x: x.light_id)
+        lights = sorted(lights, key=lambda x: x.light_id)
+        self._lights = lights
+        return lights
+
+    def get_light(self, key):
+        if self._lights is None:
+            lights = self.get_lights()
+        else:
+            lights = self._lights
+
+        if isinstance(key, str):
+            for light in lights:
+                if light.name == key:
+                    return light
+        else:
+            for light in lights:
+                if light.light_id == key:
+                    return light
+
+        raise Exception('Did not find light %s' % key)
 
     def set_state(self, light_id, **kwargs):
         '''
@@ -114,7 +149,8 @@ class HueBridgeClient(object):
 
             set_state(1, xy=[1,2])
         '''
-        url = '/api/%s/lights/%s/state' % (self.username, light_id)
+        light = self.get_light(light_id)
+        url = '/api/%s/lights/%s/state' % (self.username, light.light_id)
         response = self.make_request('PUT', url, kwargs)
         setting_count = len(kwargs.items())
         success_count = 0
@@ -126,10 +162,20 @@ class HueBridgeClient(object):
         if success_count == setting_count:
             return True
         else:
-            import pdb; pdb.set_trace()
             return False
 
     def set_color(self, light_id, hex_value, brightness=None):
         '''
         This will set the light color based on a hex value
         '''
+        light = self.get_light(light_id)
+
+        xy = get_xy_from_hex(hex_value)
+        data = {
+            'xy': [xy.x, xy.y],
+        }
+
+        if brightness is not None:
+            data['bri'] = brightness
+
+        return self.set_state(light.light_id, **data)
