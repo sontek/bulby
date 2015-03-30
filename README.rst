@@ -2,6 +2,20 @@ bulby
 =================
 Python library for managing the phillips hue lightbulb
 
+Getting Started
+=================
+To get started you just need to do the following:
+
+.. code-block:: python
+
+    from bulby.client import HueBridgeClient
+    client = HueBridgeClient()
+    light = client.get_lights()[0]
+    client.set_state(light.light_id, hue=25500)
+
+and now your light should be green!
+
+
 Development
 ================
 API Documentation for the Phillips Hue is here:
