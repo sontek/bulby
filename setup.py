@@ -41,8 +41,6 @@ setup(
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
-        'Topic :: Software Development :: Application',
-        'License :: OSI Approved :: NonFree',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
     ],
