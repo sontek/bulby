@@ -21,6 +21,16 @@ and now your light should be green! You can also reference lights by name:
     client = HueBridgeClient()
     client.set_color('Office 1', '00ff00')
 
+Tips
+====
+To get the bridge IP go here:
+
+https://www.meethue.com/api/nupnp
+
+Once you get the IP you can debug the base here:
+
+http://<bridge ip address>/debug/clip.html
+
 
 
 Development

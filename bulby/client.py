@@ -9,12 +9,15 @@ import json
 
 class HueBridgeClient(object):
     def __init__(self, ip_address=None, port=80, scheme='http',
-                 device_type='bulby', username='bulbyapp'):
+                 device_type='bulby', username='bulbysoftware'):
         '''
         Connects to a Hue Bridge, if an ip address isn't defined it
         will use ssdp to discover the bridge on the network. If there
         are more than one bridge it will raise an Exception.
         '''
+        if len(username) < 10 or len(username) > 40:
+            raise Exception("Username must be between 10 and 40 chars")
+
         if ip_address is None:
             results = discover('IpBridge')
             locations = [x.location for x in results]
